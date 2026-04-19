@@ -1,0 +1,10 @@
+rootfs-base/
+rootfs-alpha/
+rootfs-beta/
+
+logs/
+
+*.o
+*.ko
+*.mod
+engine
