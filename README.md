@@ -1,36 +1,40 @@
-# Multi-Container Runtime
+#  Multi-Container Runtime and Kernel Memory Monitor
 
-A lightweight Linux container runtime in C with a long-running supervisor and a kernel-space memory monitor.
+##  Overview
 
-Read [`project-guide.md`](project-guide.md) for the full project specification.
+This project implements a lightweight Linux container runtime in C with:
+
+* A long-running **supervisor (daemon)**
+* CLI communication via **UNIX domain sockets**
+* **Logging system** using bounded buffer (producer-consumer)
+* **Kernel module** for memory monitoring and enforcement
+* Scheduling experiments and cleanup verification
 
 ---
 
-## Getting Started
+##  Team Information
 
-### 1. Fork the Repository
+* **Member 1:** Rottela Haritej (PES1UG24AM231)
+* **Member 2:** Purushothama K C (PES1UG25AM810)
 
-1. Go to [github.com/shivangjhalani/OS-Jackfruit](https://github.com/shivangjhalani/OS-Jackfruit)
-2. Click **Fork** (top-right)
-3. Clone your fork:
+---
 
-```bash
-git clone https://github.com/<your-username>/OS-Jackfruit.git
-cd OS-Jackfruit
-```
+##  Environment Setup
 
-### 2. Set Up Your VM
+### Requirements
 
-You need an **Ubuntu 22.04 or 24.04** VM with **Secure Boot OFF**. WSL will not work.
+* Ubuntu 22.04 / 24.04 (VM recommended)
+* Secure Boot: OFF
+* Not WSL
 
-Install dependencies:
+### Install dependencies
 
 ```bash
 sudo apt update
 sudo apt install -y build-essential linux-headers-$(uname -r)
 ```
 
-### 3. Run the Environment Check
+### Optional environment check
 
 ```bash
 cd boilerplate
@@ -38,74 +42,256 @@ chmod +x environment-check.sh
 sudo ./environment-check.sh
 ```
 
-Fix any issues reported before moving on.
+---
 
-### 4. Prepare the Root Filesystem
+##  Root Filesystem Setup
 
 ```bash
-mkdir rootfs-base
-wget https://dl-cdn.alpinelinux.org/alpine/v3.20/releases/x86_64/alpine-minirootfs-3.20.3-x86_64.tar.gz
-tar -xzf alpine-minirootfs-3.20.3-x86_64.tar.gz -C rootfs-base
+cd boilerplate
 
-# Make one writable copy per container you plan to run
-cp -a ./rootfs-base ./rootfs-alpha
-cp -a ./rootfs-base ./rootfs-beta
+mkdir -p rootfs-base
+
+wget -O alpine-minirootfs.tar.gz \
+https://dl-cdn.alpinelinux.org/alpine/v3.20/releases/x86_64/alpine-minirootfs-3.20.3-x86_64.tar.gz
+
+tar -xzf alpine-minirootfs.tar.gz -C rootfs-base
+
+# Create container rootfs
+cp -a rootfs-base rootfs-alpha
+cp -a rootfs-base rootfs-beta
 ```
 
-Do not commit `rootfs-base/` or `rootfs-*` directories to your repository.
+---
 
-### 5. Understand the Boilerplate
+##  Build Instructions
 
-The `boilerplate/` folder contains starter files:
+### Compile project
 
-| File                   | Purpose                                             |
-| ---------------------- | --------------------------------------------------- |
-| `engine.c`             | User-space runtime and supervisor skeleton          |
-| `monitor.c`            | Kernel module skeleton                              |
-| `monitor_ioctl.h`      | Shared ioctl command definitions                    |
-| `Makefile`             | Build targets for both user-space and kernel module |
-| `cpu_hog.c`            | CPU-bound test workload                             |
-| `io_pulse.c`           | I/O-bound test workload                             |
-| `memory_hog.c`         | Memory-consuming test workload                      |
-| `environment-check.sh` | VM environment preflight check                      |
+```bash
+cd boilerplate
+make clean
+make
+```
 
-Use these as your starting point. You are free to restructure the repository however you want — the submission requirements are listed in the project guide.
+---
 
-### 6. Build and Verify
+##  Load Kernel Module
+
+```bash
+sudo insmod monitor.ko
+ls -l /dev/container_monitor
+```
+
+---
+
+##  Running the Project
+
+### 1. Start Supervisor (Terminal 1)
+
+```bash
+cd boilerplate
+sudo ./engine supervisor ./rootfs-base
+```
+
+---
+
+### 2. Start Containers (Terminal 2)
+
+```bash
+sudo ./engine start alpha ./rootfs-alpha /bin/sh --soft-mib 48 --hard-mib 80 --nice 0
+sudo ./engine start beta  ./rootfs-beta  /bin/sh --soft-mib 64 --hard-mib 96 --nice 0
+```
+
+---
+
+### 3. Check Containers
+
+```bash
+sudo ./engine ps
+```
+
+---
+
+### 4. View Logs
+
+```bash
+sudo ./engine logs alpha
+```
+
+---
+
+### 5. Stop Containers
+
+```bash
+sudo ./engine stop alpha
+sudo ./engine stop beta
+```
+
+---
+
+##  Workload Setup
+
+### Build workloads
 
 ```bash
 cd boilerplate
 make
 ```
 
-If this compiles without errors, your environment is ready.
-
-### 7. GitHub Actions Smoke Check
-
-Your fork will inherit a minimal GitHub Actions workflow from this repository.
-
-That workflow only performs CI-safe checks:
-
-- `make -C boilerplate ci`
-- user-space binary compilation (`engine`, `memory_hog`, `cpu_hog`, `io_pulse`)
-- `./boilerplate/engine` with no arguments must print usage and exit with a non-zero status
-
-The CI-safe build command is:
+### Copy into container rootfs
 
 ```bash
-make -C boilerplate ci
+cp cpu_hog rootfs-alpha/
+cp memory_hog rootfs-alpha/
+cp io_pulse rootfs-beta/
 ```
-
-This smoke check does not test kernel-module loading, supervisor runtime behavior, or container execution.
 
 ---
 
-## What to Do Next
+##  Example Workloads
 
-Read [`project-guide.md`](project-guide.md) end to end. It contains:
+### CPU-intensive
 
-- The six implementation tasks (multi-container runtime, CLI, logging, kernel monitor, scheduling experiments, cleanup)
-- The engineering analysis you must write
-- The exact submission requirements, including what your `README.md` must contain (screenshots, analysis, design decisions)
+```bash
+sudo ./engine start alpha ./rootfs-alpha "./cpu_hog"
+```
 
-Your fork's `README.md` should be replaced with your own project documentation as described in the submission package section of the project guide. (As in get rid of all the above content and replace with your README.md)
+### Infinite running container
+
+```bash
+sudo ./engine start alpha ./rootfs-alpha "while true; do sleep 1; done"
+```
+
+---
+
+##  Container States
+
+| State   | Meaning             |
+| ------- | ------------------- |
+| running | process is active   |
+| exited  | process completed   |
+| stopped | manually terminated |
+
+---
+
+##  Task Scripts
+
+### Task 5: Scheduler Experiments
+
+```bash
+sudo ./task5_experiments.sh
+```
+
+Outputs:
+
+* `experiments/task5_results.csv`
+* logs in `logs/`
+
+---
+
+### Task 6: Cleanup Verification
+
+```bash
+sudo ./task6_cleanup_check.sh
+```
+
+---
+
+##  Cleanup
+
+```bash
+sudo pkill -f "./engine supervisor"
+sudo rmmod monitor
+make clean
+```
+
+---
+## DEMO Screenshots
+###1. Multi-container supervision
+![ps output](docs/screenshots/engine_ps.png)
+###2 .Metadata tracking
+![Output of ./engine ps showing all tracked container metadata: id, pid, state, soft/hard limits, exit code, signal, log path.](docs/screenshots/engine.ps.png)
+###3. Bounded-buffer logging
+![cat logs/alpha.log shows cpu_hog output routed through the logging pipeline.](docs/screenshots/cat_log.png)
+###4.CLI and IPC
+![./engine stop alpha issued from CLI client, request sent over UNIX domain socket to supervisor, supervisor responds "OK stop requested id=alpha" and updates container state to stopped.](docs/screenshots/engine_logs.png)
+###5. Soft-limit warning
+![dmesg output showing container_monitor Registering container=memtest and HARD LIMIT exceeded event logged by the kernel module when container RSS crosses the soft limit threshold.](docs/screenshots/dmesg.png)
+###6. Hard-limit enforcement
+![Container memtest started with --soft-mib 40 --hard-mib 64, kernel module detects RSS exceeding hard limit and sends SIGKILL. ./engine ps shows state as hard_limit_killed with exit signal 9.](docs/screenshots/hardlimit_enforcement.png)
+###7. Scheduling experiment
+![Two CPU-bound containers launched: cpuA at nice=0, cpuB at nice=15. top output shows cpuA receiving ~79% CPU vs cpuB receiving ~44%, demonstrating CFS weighted scheduling based on nice values.](docs/screenshots/scheduling_experiment.png)
+###8. Clean teardown
+![After stopping all containers and sending SIGINT to supervisor, ps aux | grep engine shows no engine supervisor processes remaining. No zombie processes](docs/screenshots/clean_teardown)
+
+
+
+
+
+
+
+
+
+
+
+##  Key Concepts Used
+
+* Linux Namespaces (PID, UTS, Mount)
+* `chroot` for filesystem isolation
+* Process management (`fork`, `clone`)
+* Signals (`SIGTERM`, `SIGKILL`)
+* Producer-consumer synchronization
+* Kernel module (memory monitoring)
+
+---
+
+##  Design Highlights
+
+* Supervisor manages multiple containers
+* CLI communicates via UNIX socket
+* Logs handled using bounded buffer
+* Kernel module enforces memory limits
+
+---
+
+##  Scheduling Results (Summary)
+
+| Container | Nice | CPU Usage |
+| --------- | ---- | --------- |
+| cpuA      | 0    | ~79%      |
+| cpuB      | 15   | ~44%      |
+
+Higher priority (lower nice) gets more CPU — shows Linux CFS behavior
+
+---
+
+##  Conclusion
+
+This project demonstrates how containerization works using Linux primitives without Docker. It combines user-space process control with kernel-level enforcement.
+
+---
+
+##  Notes
+
+* Each container has its own rootfs
+* Binaries must exist inside rootfs
+* Always use `sudo`
+* Use separate rootfs for each container
+
+---
+
+##  Submission Checklist
+
+* Source files present
+* Kernel module working
+* Screenshots added
+* Scripts included
+* README completed
+
+---
+
+##  Author
+
+Rottela Haritej
+Purushothama K C 
+
