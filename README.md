@@ -207,22 +207,22 @@ make clean
 
 ---
 ## DEMO Screenshots
-###1. Multi-container supervision
+##1. Multi-container supervision
 ![ps output](docs/screenshots/engine_ps.png)
-###2 .Metadata tracking
-![Output of ./engine ps showing all tracked container metadata: id, pid, state, soft/hard limits, exit code, signal, log path.](docs/screenshots/engine.ps.png)
-###3. Bounded-buffer logging
+##2 .Metadata tracking
+![Output of ./engine ps showing all tracked container metadata: id, pid, state, soft/hard limits, exit code, signal, log path.](docs/screenshots/engine_ps.png)
+##3. Bounded-buffer logging
 ![cat logs/alpha.log shows cpu_hog output routed through the logging pipeline.](docs/screenshots/cat_log.png)
-###4.CLI and IPC
+##4.CLI and IPC
 ![./engine stop alpha issued from CLI client, request sent over UNIX domain socket to supervisor, supervisor responds "OK stop requested id=alpha" and updates container state to stopped.](docs/screenshots/engine_logs.png)
-###5. Soft-limit warning
+##5. Soft-limit warning
 ![dmesg output showing container_monitor Registering container=memtest and HARD LIMIT exceeded event logged by the kernel module when container RSS crosses the soft limit threshold.](docs/screenshots/dmesg.png)
-###6. Hard-limit enforcement
+##6. Hard-limit enforcement
 ![Container memtest started with --soft-mib 40 --hard-mib 64, kernel module detects RSS exceeding hard limit and sends SIGKILL. ./engine ps shows state as hard_limit_killed with exit signal 9.](docs/screenshots/hardlimit_enforcement.png)
-###7. Scheduling experiment
+##7. Scheduling experiment
 ![Two CPU-bound containers launched: cpuA at nice=0, cpuB at nice=15. top output shows cpuA receiving ~79% CPU vs cpuB receiving ~44%, demonstrating CFS weighted scheduling based on nice values.](docs/screenshots/scheduling_experiment.png)
-###8. Clean teardown
-![After stopping all containers and sending SIGINT to supervisor, ps aux | grep engine shows no engine supervisor processes remaining. No zombie processes](docs/screenshots/clean_teardown)
+##8. Clean teardown
+![After stopping all containers and sending SIGINT to supervisor, ps aux | grep engine shows no engine supervisor processes remaining. No zombie processes](docs/screenshots/clean_teardown.png)
 
 
 
