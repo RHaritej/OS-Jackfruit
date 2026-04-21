@@ -292,6 +292,6 @@ This project demonstrates how containerization works using Linux primitives with
 
 ##  Author
 
-Rottela Haritej
-Purushothama K C 
+*Rottela Haritej
+*Purushothama K C 
 
