@@ -2,7 +2,7 @@
 
 ##  Overview
 
-This project implements a lightweight Linux container runtime in C with:
+This project implements a lightweight Linux container runtime in C with: 
 
 * A long-running **supervisor (daemon)**
 * CLI communication via **UNIX domain sockets**
