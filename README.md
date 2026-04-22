@@ -25,7 +25,7 @@ This project implements a lightweight Linux container runtime in C with:
 
 * Ubuntu 22.04 / 24.04 (VM recommended)
 * Secure Boot: OFF
-* Not WSL
+* Not wsl   
 
 ### Install dependencies
 
